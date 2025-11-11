@@ -159,10 +159,10 @@ export type Database = {
     }
     Functions: {
       increment_download_count: {
-        Args: { item_uuid: string }
+        Args: { item_id: string }
         Returns: undefined
       }
-      update_item_rating: { Args: { item_uuid: string }; Returns: undefined }
+      update_item_rating: { Args: { item_id: string }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

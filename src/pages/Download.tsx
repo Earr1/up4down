@@ -67,7 +67,7 @@ const Download = () => {
     if (!item) return;
 
     try {
-      await supabase.rpc("increment_download_count", { item_uuid: item.id });
+      await supabase.rpc("increment_download_count", { item_id: item.id });
       
       window.open(item.download_url, "_blank");
       toast.success("Download started!");
