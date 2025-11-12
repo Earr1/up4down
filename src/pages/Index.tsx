@@ -5,33 +5,28 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { DownloadCard } from "@/components/DownloadCard";
 import { Download, Sparkles, Shield, Zap } from "lucide-react";
-
 const Index = () => {
   const [featuredItems, setFeaturedItems] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-
   useEffect(() => {
     fetchData();
   }, []);
-
   const fetchData = async () => {
     // Fetch featured items (items marked as featured by admin)
-    const { data: items } = await supabase
-      .from("download_items")
-      .select("*")
-      .eq("featured", true)
-      .order("created_at", { ascending: false })
-      .limit(8);
-
+    const {
+      data: items
+    } = await supabase.from("download_items").select("*").eq("featured", true).order("created_at", {
+      ascending: false
+    }).limit(8);
     if (items) setFeaturedItems(items);
 
     // Fetch categories
-    const { data: cats } = await supabase.from("categories").select("*").order("name");
+    const {
+      data: cats
+    } = await supabase.from("categories").select("*").order("name");
     if (cats) setCategories(cats);
   };
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <Navbar />
 
       {/* Hero Section */}
@@ -41,14 +36,14 @@ const Index = () => {
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 bg-accent/10 px-4 py-2 rounded-full mb-6">
               <Sparkles className="h-4 w-4 text-accent" />
-              <span className="text-sm text-accent font-medium">
+              <span className="text-sm font-medium text-slate-200">
                 Your Ultimate Download Platform
               </span>
             </div>
 
             <h1 className="text-5xl md:text-7xl font-bold mb-6 text-white">
               Download Anything
-              <span className="block text-accent">Anywhere</span>
+              <span className="block text-slate-300">Anywhere, Anytime </span>
             </h1>
 
             <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-2xl mx-auto">
@@ -64,7 +59,7 @@ const Index = () => {
                 </Button>
               </Link>
               <a href="#features">
-                <Button size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10 text-lg">
+                <Button size="lg" variant="outline" className="border-white/20 hover:bg-white/10 text-lg text-zinc-950">
                   Learn More
                 </Button>
               </a>
@@ -118,8 +113,7 @@ const Index = () => {
       </section>
 
       {/* Categories Section */}
-      {categories.length > 0 && (
-        <section className="py-20">
+      {categories.length > 0 && <section className="py-20">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">Browse by Category</h2>
@@ -129,23 +123,19 @@ const Index = () => {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-              {categories.map((category) => (
-                <Link key={category.id} to={`/browse?category=${category.slug}`}>
+              {categories.map(category => <Link key={category.id} to={`/browse?category=${category.slug}`}>
                   <div className="p-6 rounded-xl border border-border hover:border-accent hover:shadow-glow transition-all duration-300 text-center group">
                     <h3 className="font-semibold group-hover:text-accent transition-colors">
                       {category.name}
                     </h3>
                   </div>
-                </Link>
-              ))}
+                </Link>)}
             </div>
           </div>
-        </section>
-      )}
+        </section>}
 
       {/* Featured Downloads Section */}
-      {featuredItems.length > 0 && (
-        <section className="py-20 bg-muted/30">
+      {featuredItems.length > 0 && <section className="py-20 bg-muted/30">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">Featured Downloads</h2>
@@ -155,9 +145,7 @@ const Index = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
-              {featuredItems.map((item) => (
-                <DownloadCard key={item.id} item={item} />
-              ))}
+              {featuredItems.map(item => <DownloadCard key={item.id} item={item} />)}
             </div>
 
             <div className="text-center mt-12">
@@ -168,8 +156,7 @@ const Index = () => {
               </Link>
             </div>
           </div>
-        </section>
-      )}
+        </section>}
 
       {/* Footer */}
       <footer className="border-t py-12 bg-card">
@@ -185,8 +172,6 @@ const Index = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
