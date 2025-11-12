@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { z } from "zod";
+import { Upload, X } from "lucide-react";
 
 const urlSchema = z.string().url("Must be a valid URL").max(500);
 const itemSchema = z.object({
@@ -44,6 +46,9 @@ interface AdminItemFormProps {
 export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>(item?.thumbnail_url || "");
   const [formData, setFormData] = useState({
     title: item?.title || "",
     description: item?.description || "",
@@ -68,13 +73,67 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
     if (data) setCategories(data);
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB");
+      return;
+    }
+
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile) return formData.thumbnail_url;
+
+    setUploading(true);
+    try {
+      const fileExt = imageFile.name.split(".").pop();
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError, data } = await supabase.storage
+        .from("thumbnails")
+        .upload(filePath, imageFile);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("thumbnails")
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      toast.error("Failed to upload image");
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // Upload image if selected
+      const thumbnailUrl = await uploadImage();
+      
+      const dataToSave = {
+        ...formData,
+        thumbnail_url: thumbnailUrl || formData.thumbnail_url,
+      };
+
       // Validate form data
-      const validation = itemSchema.safeParse(formData);
+      const validation = itemSchema.safeParse(dataToSave);
       if (!validation.success) {
         toast.error(validation.error.errors[0].message);
         setLoading(false);
@@ -85,14 +144,14 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
         // Update existing item
         const { error } = await supabase
           .from("download_items")
-          .update(formData)
+          .update(dataToSave)
           .eq("id", item.id);
 
         if (error) throw error;
         toast.success("Item updated successfully");
       } else {
         // Create new item
-        const { error } = await supabase.from("download_items").insert([formData]);
+        const { error } = await supabase.from("download_items").insert([dataToSave]);
 
         if (error) throw error;
         toast.success("Item created successfully");
@@ -165,14 +224,57 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="thumbnail_url">Thumbnail URL</Label>
-          <Input
-            id="thumbnail_url"
-            type="url"
-            value={formData.thumbnail_url}
-            onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
-            placeholder="https://example.com/image.jpg"
-          />
+          <Label>Thumbnail Image</Label>
+          <div className="space-y-3">
+            {imagePreview && (
+              <div className="relative w-32 h-32 border rounded-lg overflow-hidden">
+                <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImageFile(null);
+                    setImagePreview("");
+                    setFormData({ ...formData, thumbnail_url: "" });
+                  }}
+                  className="absolute top-1 right-1 p-1 bg-background/80 rounded-full hover:bg-background"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+            
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Label htmlFor="image-upload" className="cursor-pointer">
+                  <div className="flex items-center gap-2 px-4 py-2 border rounded-md hover:bg-muted transition-colors">
+                    <Upload className="h-4 w-4" />
+                    <span className="text-sm">Upload Image</span>
+                  </div>
+                </Label>
+                <Input
+                  id="image-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </div>
+              
+              <div className="flex-1">
+                <Label htmlFor="thumbnail_url" className="text-sm text-muted-foreground">Or paste URL</Label>
+                <Input
+                  id="thumbnail_url"
+                  type="url"
+                  value={formData.thumbnail_url}
+                  onChange={(e) => {
+                    setFormData({ ...formData, thumbnail_url: e.target.value });
+                    setImagePreview(e.target.value);
+                  }}
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -209,7 +311,21 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-4 border-t pt-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="featured" className="text-base font-semibold">Featured Item</Label>
+              <p className="text-sm text-muted-foreground">Display this item in the featured section on homepage</p>
+            </div>
+            <Switch
+              id="featured"
+              checked={formData.featured}
+              onCheckedChange={(checked) => setFormData({ ...formData, featured: checked })}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2 border-t pt-6">
           <Label className="text-base font-semibold">Initial Stats (Optional)</Label>
           <p className="text-sm text-muted-foreground mb-4">Set starting download count and ratings for this item</p>
           
@@ -255,8 +371,8 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
         </div>
 
         <div className="flex items-center gap-4">
-          <Button type="submit" disabled={loading} className="bg-primary text-primary-foreground hover:bg-primary/90">
-            {loading ? "Saving..." : item ? "Update Item" : "Create Item"}
+          <Button type="submit" disabled={loading || uploading} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            {uploading ? "Uploading..." : loading ? "Saving..." : item ? "Update Item" : "Create Item"}
           </Button>
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel

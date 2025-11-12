@@ -15,11 +15,12 @@ const Index = () => {
   }, []);
 
   const fetchData = async () => {
-    // Fetch featured items
+    // Fetch featured items (items marked as featured by admin)
     const { data: items } = await supabase
       .from("download_items")
       .select("*")
-      .order("download_count", { ascending: false })
+      .eq("featured", true)
+      .order("created_at", { ascending: false })
       .limit(8);
 
     if (items) setFeaturedItems(items);
@@ -142,14 +143,14 @@ const Index = () => {
         </section>
       )}
 
-      {/* Popular Downloads Section */}
+      {/* Featured Downloads Section */}
       {featuredItems.length > 0 && (
         <section className="py-20 bg-muted/30">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Popular Downloads</h2>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Featured Downloads</h2>
               <p className="text-muted-foreground text-lg">
-                Most downloaded items this month
+                Hand-picked items selected by our team
               </p>
             </div>
 
