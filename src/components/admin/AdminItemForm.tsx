@@ -25,6 +25,9 @@ const itemSchema = z.object({
   version: z.string().trim().max(50).optional(),
   download_url: urlSchema,
   thumbnail_url: z.string().trim().max(500).optional(),
+  download_count: z.number().int().min(0).optional(),
+  average_rating: z.number().min(0).max(5).optional(),
+  rating_count: z.number().int().min(0).optional(),
 });
 
 interface Category {
@@ -51,6 +54,9 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
     file_size: item?.file_size || "",
     version: item?.version || "",
     featured: item?.featured || false,
+    download_count: item?.download_count || 0,
+    average_rating: item?.average_rating || 0,
+    rating_count: item?.rating_count || 0,
   });
 
   useEffect(() => {
@@ -203,8 +209,53 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
           </div>
         </div>
 
+        <div className="space-y-2">
+          <Label className="text-base font-semibold">Initial Stats (Optional)</Label>
+          <p className="text-sm text-muted-foreground mb-4">Set starting download count and ratings for this item</p>
+          
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="download_count">Download Count</Label>
+              <Input
+                id="download_count"
+                type="number"
+                min="0"
+                value={formData.download_count}
+                onChange={(e) => setFormData({ ...formData, download_count: parseInt(e.target.value) || 0 })}
+                placeholder="0"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="average_rating">Average Rating (0-5)</Label>
+              <Input
+                id="average_rating"
+                type="number"
+                min="0"
+                max="5"
+                step="0.1"
+                value={formData.average_rating}
+                onChange={(e) => setFormData({ ...formData, average_rating: parseFloat(e.target.value) || 0 })}
+                placeholder="0.0"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="rating_count">Rating Count</Label>
+              <Input
+                id="rating_count"
+                type="number"
+                min="0"
+                value={formData.rating_count}
+                onChange={(e) => setFormData({ ...formData, rating_count: parseInt(e.target.value) || 0 })}
+                placeholder="0"
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="flex items-center gap-4">
-          <Button type="submit" disabled={loading} className="bg-accent hover:bg-accent/90">
+          <Button type="submit" disabled={loading} className="bg-primary text-primary-foreground hover:bg-primary/90">
             {loading ? "Saving..." : item ? "Update Item" : "Create Item"}
           </Button>
           <Button type="button" variant="outline" onClick={onCancel}>

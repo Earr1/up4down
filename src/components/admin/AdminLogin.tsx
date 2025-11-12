@@ -16,13 +16,31 @@ const loginSchema = z.object({
 export const AdminLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resetMode, setResetMode] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      if (resetMode) {
+        // Handle password reset
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/admin`,
+        });
+
+        if (error) {
+          toast.error(error.message);
+        } else {
+          toast.success("Password reset link sent to your email");
+          setResetMode(false);
+        }
+        setLoading(false);
+        return;
+      }
+
       // Validate inputs
       const validation = loginSchema.safeParse({ email, password });
       if (!validation.success) {
@@ -31,7 +49,7 @@ export const AdminLogin = () => {
         return;
       }
 
-      // Sign in
+      // Sign in (session persistence is handled by Supabase client config)
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -61,10 +79,12 @@ export const AdminLogin = () => {
         </div>
 
         <h1 className="text-2xl font-bold text-center mb-2">
-          Admin Login
+          {resetMode ? "Reset Password" : "Admin Login"}
         </h1>
         <p className="text-muted-foreground text-center mb-6">
-          Sign in to access the admin panel
+          {resetMode 
+            ? "Enter your email to receive a password reset link" 
+            : "Sign in to access the admin panel"}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -80,24 +100,50 @@ export const AdminLogin = () => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password (min 6 characters)"
-              required
-            />
-          </div>
+          {!resetMode && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password (min 6 characters)"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-input"
+                />
+                <Label htmlFor="rememberMe" className="text-sm cursor-pointer">
+                  Remember me for 30 days
+                </Label>
+              </div>
+            </>
+          )}
 
           <Button
             type="submit"
-            className="w-full bg-accent hover:bg-accent/90"
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
             disabled={loading}
           >
-            {loading ? "Authenticating..." : "Login"}
+            {loading ? "Processing..." : (resetMode ? "Send Reset Link" : "Login")}
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
+            onClick={() => setResetMode(!resetMode)}
+          >
+            {resetMode ? "Back to Login" : "Forgot Password?"}
           </Button>
         </form>
       </Card>
