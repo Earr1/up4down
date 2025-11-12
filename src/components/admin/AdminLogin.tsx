@@ -16,7 +16,6 @@ const loginSchema = z.object({
 export const AdminLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,40 +31,19 @@ export const AdminLogin = () => {
         return;
       }
 
-      if (isSignUp) {
-        // Sign up new admin user
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/admin`,
-          },
-        });
+      // Sign in
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-        if (error) {
-          toast.error(error.message);
-          setLoading(false);
-          return;
-        }
-
-        if (data.user) {
-          toast.success("Account created! Please contact an existing admin to grant you admin access.");
-        }
-      } else {
-        // Sign in
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) {
-          toast.error(error.message);
-          setLoading(false);
-          return;
-        }
-
-        toast.success("Login successful");
+      if (error) {
+        toast.error(error.message);
+        setLoading(false);
+        return;
       }
+
+      toast.success("Login successful");
     } catch (error) {
       toast.error("Authentication failed");
     } finally {
@@ -83,12 +61,10 @@ export const AdminLogin = () => {
         </div>
 
         <h1 className="text-2xl font-bold text-center mb-2">
-          {isSignUp ? "Admin Sign Up" : "Admin Login"}
+          Admin Login
         </h1>
         <p className="text-muted-foreground text-center mb-6">
-          {isSignUp 
-            ? "Create an admin account (requires admin approval)" 
-            : "Sign in to access the admin panel"}
+          Sign in to access the admin panel
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -121,16 +97,7 @@ export const AdminLogin = () => {
             className="w-full bg-accent hover:bg-accent/90"
             disabled={loading}
           >
-            {loading ? "Authenticating..." : (isSignUp ? "Sign Up" : "Login")}
-          </Button>
-
-          <Button
-            type="button"
-            variant="ghost"
-            className="w-full"
-            onClick={() => setIsSignUp(!isSignUp)}
-          >
-            {isSignUp ? "Already have an account? Login" : "Need an account? Sign Up"}
+            {loading ? "Authenticating..." : "Login"}
           </Button>
         </form>
       </Card>
