@@ -3,6 +3,12 @@ import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { z } from "zod";
+
+const ratingSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  item_id: z.string().uuid(),
+});
 
 interface RatingInputProps {
   itemId: string;
@@ -22,10 +28,18 @@ export const RatingInput = ({ itemId, onRatingSubmit }: RatingInputProps) => {
 
     setSubmitting(true);
 
-    // Use a unique identifier (could be IP-based, session-based, etc.)
-    const userIdentifier = `user_${Date.now()}_${Math.random()}`;
-
     try {
+      // Validate input
+      const validation = ratingSchema.safeParse({ rating, item_id: itemId });
+      if (!validation.success) {
+        toast.error("Invalid rating data");
+        setSubmitting(false);
+        return;
+      }
+
+      // Generate a more secure user identifier using crypto API
+      const userIdentifier = `anon_${crypto.randomUUID()}`;
+
       const { error } = await supabase.from("ratings").insert({
         item_id: itemId,
         rating: rating,

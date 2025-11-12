@@ -13,6 +13,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { z } from "zod";
+
+const urlSchema = z.string().url("Must be a valid URL").max(500);
+const itemSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(200),
+  description: z.string().trim().max(2000).optional(),
+  category_id: z.string().uuid("Invalid category"),
+  file_type: z.string().trim().min(1, "File type is required").max(50),
+  file_size: z.string().trim().max(50).optional(),
+  version: z.string().trim().max(50).optional(),
+  download_url: urlSchema,
+  thumbnail_url: z.string().trim().max(500).optional(),
+});
 
 interface Category {
   id: string;
@@ -54,6 +67,14 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
     setLoading(true);
 
     try {
+      // Validate form data
+      const validation = itemSchema.safeParse(formData);
+      if (!validation.success) {
+        toast.error(validation.error.errors[0].message);
+        setLoading(false);
+        return;
+      }
+
       if (item) {
         // Update existing item
         const { error } = await supabase
@@ -74,7 +95,6 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
       onSuccess();
     } catch (error) {
       toast.error("Failed to save item");
-      console.error(error);
     } finally {
       setLoading(false);
     }
