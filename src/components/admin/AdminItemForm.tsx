@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { z } from "zod";
-import { Upload, X } from "lucide-react";
+import { Upload, X, Play, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const urlSchema = z.string().url("Must be a valid URL").max(500);
 const itemSchema = z.object({
@@ -49,6 +50,8 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
   const [uploading, setUploading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>(item?.thumbnail_url || "");
+  const [testOutput, setTestOutput] = useState<string[]>([]);
+  const [testError, setTestError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: item?.title || "",
     description: item?.description || "",
@@ -117,6 +120,50 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
       return null;
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleTestJS = () => {
+    setTestOutput([]);
+    setTestError(null);
+
+    if (!formData.custom_js || formData.custom_js.trim() === "") {
+      setTestError("No JavaScript code to test");
+      return;
+    }
+
+    // Create mock item object for testing
+    const mockItem = {
+      id: item?.id || "test-item-id",
+      title: formData.title || "Test Item",
+      download_url: formData.download_url || "https://example.com/download",
+      file_type: formData.file_type || "test",
+    };
+
+    // Capture console output
+    const consoleLog: string[] = [];
+    const mockConsole = {
+      log: (...args: any[]) => consoleLog.push(args.map(a => String(a)).join(" ")),
+      error: (...args: any[]) => consoleLog.push("ERROR: " + args.map(a => String(a)).join(" ")),
+      warn: (...args: any[]) => consoleLog.push("WARN: " + args.map(a => String(a)).join(" ")),
+    };
+
+    try {
+      // Create a safe function with mock console
+      const testFunction = new Function(
+        'item', 
+        'window', 
+        'document', 
+        'console',
+        formData.custom_js
+      );
+      
+      // Execute with mock objects
+      testFunction(mockItem, {}, {}, mockConsole);
+      
+      setTestOutput(consoleLog.length > 0 ? consoleLog : ["✓ Code executed successfully (no console output)"]);
+    } catch (error: any) {
+      setTestError(error.message || "Unknown error occurred");
     }
   };
 
@@ -387,8 +434,44 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
             className="font-mono text-sm"
           />
           <p className="text-xs text-muted-foreground">
-            Available variables: <code className="px-1 py-0.5 bg-muted rounded text-xs">item</code>, <code className="px-1 py-0.5 bg-muted rounded text-xs">window</code>, <code className="px-1 py-0.5 bg-muted rounded text-xs">document</code>
+            Available variables: <code className="px-1 py-0.5 bg-muted rounded text-xs">item</code>, <code className="px-1 py-0.5 bg-muted rounded text-xs">window</code>, <code className="px-1 py-0.5 bg-muted rounded text-xs">document</code>, <code className="px-1 py-0.5 bg-muted rounded text-xs">console</code>
           </p>
+          
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold">Test Console</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleTestJS}
+                className="gap-2"
+              >
+                <Play className="h-4 w-4" />
+                Test Code
+              </Button>
+            </div>
+
+            {testError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="font-mono text-xs">
+                  {testError}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {testOutput.length > 0 && (
+              <div className="bg-muted rounded-md p-3 space-y-1 max-h-40 overflow-y-auto">
+                <p className="text-xs font-semibold text-muted-foreground mb-2">Console Output:</p>
+                {testOutput.map((line, idx) => (
+                  <div key={idx} className="text-xs font-mono text-foreground">
+                    {line}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-4">
