@@ -137,16 +137,20 @@ if (clickCount < 3) {
   clickCount++;
   sessionStorage.setItem('download_clicks_' + item.id, clickCount.toString());
   
-  // Show user feedback
-  alert('Please click the download button ' + (3 - clickCount) + ' more time(s) to proceed');
-  
-  // Prevent actual download
-  return false;
+  if (clickCount < 3) {
+    // Show user feedback for clicks 1-2
+    alert('Ads lets us keep things free — close any ad tab and click Download again up to ' + (3 - clickCount) + ' time(s) to proceed the download');
+    
+    // Prevent actual download
+    return false;
+  } else {
+    // This is the 3rd click - ad opened, now allow download
+    sessionStorage.removeItem('download_clicks_' + item.id);
+    return true;
+  }
 } else {
-  // Reset counter after successful download
+  // Fallback: reset and allow download
   sessionStorage.removeItem('download_clicks_' + item.id);
-  
-  // Allow download to proceed
   return true;
 }`,
     simpleTracking: `// Simple Analytics Tracking
