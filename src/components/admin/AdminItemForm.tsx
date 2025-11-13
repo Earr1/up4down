@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { z } from "zod";
-import { Upload, X, Play, AlertCircle } from "lucide-react";
+import { Upload, X, Play, AlertCircle, Code } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const urlSchema = z.string().url("Must be a valid URL").max(500);
@@ -120,6 +120,67 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
       return null;
     } finally {
       setUploading(false);
+    }
+  };
+
+  const jsTemplates = {
+    adMonetization: `// Ad Monetization - Requires 3 clicks before download
+// Replace 'https://example.com' with your ad network URL
+
+let clickCount = parseInt(sessionStorage.getItem('download_clicks_' + item.id) || '0');
+
+if (clickCount < 3) {
+  // Open ad URL in new tab
+  window.open('https://example.com', '_blank');
+  
+  // Increment click count
+  clickCount++;
+  sessionStorage.setItem('download_clicks_' + item.id, clickCount.toString());
+  
+  // Show user feedback
+  alert('Please click the download button ' + (3 - clickCount) + ' more time(s) to proceed');
+  
+  // Prevent actual download
+  return false;
+} else {
+  // Reset counter after successful download
+  sessionStorage.removeItem('download_clicks_' + item.id);
+  
+  // Allow download to proceed
+  return true;
+}`,
+    simpleTracking: `// Simple Analytics Tracking
+console.log('Download started for:', item.title);
+console.log('File type:', item.file_type);
+console.log('Timestamp:', new Date().toISOString());
+
+// You can send this to your analytics service
+// Example: fetch('/api/track', { method: 'POST', body: JSON.stringify({ item_id: item.id }) });`,
+    
+    delayedDownload: `// Delayed Download (3 seconds)
+alert('Your download will start in 3 seconds...');
+
+setTimeout(() => {
+  window.location.href = item.download_url;
+}, 3000);
+
+// Prevent immediate download
+return false;`,
+
+    confirmDownload: `// Confirmation Dialog
+if (!confirm('Do you want to download ' + item.title + '?')) {
+  return false;
+}
+return true;`
+  };
+
+  const handleTemplateSelect = (template: string) => {
+    if (template && jsTemplates[template as keyof typeof jsTemplates]) {
+      setFormData({
+        ...formData,
+        custom_js: jsTemplates[template as keyof typeof jsTemplates]
+      });
+      toast.success("Template loaded! You can now customize it.");
     }
   };
 
@@ -419,18 +480,36 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
         </div>
 
         <div className="space-y-2 border-t pt-6">
-          <Label htmlFor="custom_js" className="text-base font-semibold">
-            Custom JavaScript (Optional)
-          </Label>
-          <p className="text-sm text-muted-foreground mb-4">
-            JavaScript code to execute when download button is clicked. Use for analytics tracking, custom behavior, etc.
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <Label htmlFor="custom_js" className="text-base font-semibold">
+                Custom JavaScript (Optional)
+              </Label>
+              <p className="text-sm text-muted-foreground mt-1">
+                JavaScript code to execute when download button is clicked. Use for analytics tracking, custom behavior, etc.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Code className="h-4 w-4 text-muted-foreground" />
+              <Select onValueChange={handleTemplateSelect}>
+                <SelectTrigger className="w-[220px] h-9">
+                  <SelectValue placeholder="Load template..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="adMonetization">💰 Ad Monetization (3 clicks)</SelectItem>
+                  <SelectItem value="simpleTracking">📊 Simple Tracking</SelectItem>
+                  <SelectItem value="delayedDownload">⏱️ Delayed Download</SelectItem>
+                  <SelectItem value="confirmDownload">✅ Confirm Download</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <Textarea
             id="custom_js"
             value={formData.custom_js}
             onChange={(e) => setFormData({ ...formData, custom_js: e.target.value })}
-            placeholder="// Example: console.log('Download clicked');"
-            rows={6}
+            placeholder="// Select a template above or write your own JavaScript code here..."
+            rows={10}
             className="font-mono text-sm"
           />
           <p className="text-xs text-muted-foreground">
