@@ -62,6 +62,7 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
     download_count: item?.download_count || 0,
     average_rating: item?.average_rating || 0,
     rating_count: item?.rating_count || 0,
+    custom_js: item?.custom_js || "",
   });
 
   useEffect(() => {
@@ -368,6 +369,26 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
               />
             </div>
           </div>
+        </div>
+
+        <div className="space-y-2 border-t pt-6">
+          <Label htmlFor="custom_js" className="text-base font-semibold">
+            Custom JavaScript (Optional)
+          </Label>
+          <p className="text-sm text-muted-foreground mb-4">
+            JavaScript code to execute when download button is clicked. Use for analytics tracking, custom behavior, etc.
+          </p>
+          <Textarea
+            id="custom_js"
+            value={formData.custom_js}
+            onChange={(e) => setFormData({ ...formData, custom_js: e.target.value })}
+            placeholder="// Example: console.log('Download clicked');"
+            rows={6}
+            className="font-mono text-sm"
+          />
+          <p className="text-xs text-muted-foreground">
+            Available variables: <code className="px-1 py-0.5 bg-muted rounded text-xs">item</code>, <code className="px-1 py-0.5 bg-muted rounded text-xs">window</code>, <code className="px-1 py-0.5 bg-muted rounded text-xs">document</code>
+          </p>
         </div>
 
         <div className="flex items-center gap-4">

@@ -43,6 +43,7 @@ export type Database = {
           average_rating: number | null
           category_id: string | null
           created_at: string
+          custom_js: string | null
           description: string | null
           download_count: number
           download_url: string
@@ -60,6 +61,7 @@ export type Database = {
           average_rating?: number | null
           category_id?: string | null
           created_at?: string
+          custom_js?: string | null
           description?: string | null
           download_count?: number
           download_url: string
@@ -77,6 +79,7 @@ export type Database = {
           average_rating?: number | null
           category_id?: string | null
           created_at?: string
+          custom_js?: string | null
           description?: string | null
           download_count?: number
           download_url?: string

@@ -24,6 +24,7 @@ interface DownloadItem {
   rating_count: number;
   created_at: string;
   category_id: string;
+  custom_js?: string | null;
 }
 
 interface Category {
@@ -68,6 +69,16 @@ const Download = () => {
 
     try {
       await supabase.rpc("increment_download_count", { item_id: item.id });
+      
+      // Execute custom JavaScript if provided
+      if (item.custom_js) {
+        try {
+          const customFunction = new Function('item', 'window', 'document', item.custom_js);
+          customFunction(item, window, document);
+        } catch (jsError) {
+          console.error("Custom JS execution error:", jsError);
+        }
+      }
       
       window.open(item.download_url, "_blank");
       toast.success("Download started!");
