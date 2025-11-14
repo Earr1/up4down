@@ -25,7 +25,14 @@ export const DownloadCard = ({ item }: DownloadCardProps) => {
         <div className="aspect-video bg-muted relative overflow-hidden">
           {item.thumbnail_url ? (
             <img
-              src={item.thumbnail_url}
+              src={(() => {
+                try {
+                  const urls = JSON.parse(item.thumbnail_url);
+                  return Array.isArray(urls) && urls.length > 0 ? urls[0] : item.thumbnail_url;
+                } catch {
+                  return item.thumbnail_url;
+                }
+              })()}
               alt={item.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />

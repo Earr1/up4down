@@ -134,7 +134,14 @@ const Download = () => {
             <Card className="p-6">
               {item.thumbnail_url && (
                 <img
-                  src={item.thumbnail_url}
+                  src={(() => {
+                    try {
+                      const urls = JSON.parse(item.thumbnail_url);
+                      return Array.isArray(urls) && urls.length > 0 ? urls[0] : item.thumbnail_url;
+                    } catch {
+                      return item.thumbnail_url;
+                    }
+                  })()}
                   alt={item.title}
                   className="w-full h-64 object-cover rounded-lg mb-6"
                 />

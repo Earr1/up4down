@@ -20,14 +20,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const urlSchema = z.string().url("Must be a valid URL").max(500);
 const itemSchema = z.object({
-  title: z.string().trim().min(1, "Title is required").max(200),
-  description: z.string().trim().max(2000).optional(),
+  title: z.string().trim().min(1, "Title is required"),
+  description: z.string().trim().optional(),
   category_ids: z.array(z.string().uuid()).min(1, "At least one category is required"),
   file_type: z.string().trim().min(1, "File type is required").max(50),
   file_size: z.string().trim().max(50).optional(),
   version: z.string().trim().max(50).optional(),
   download_url: urlSchema,
-  thumbnail_url: z.string().trim().max(500).optional(),
+  thumbnail_url: z.string().trim().optional(),
   download_count: z.number().int().min(0).optional(),
   average_rating: z.number().min(0).max(5).optional(),
   rating_count: z.number().int().min(0).optional(),
@@ -48,8 +48,10 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>(item?.thumbnail_url || "");
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>(
+    item?.thumbnail_url ? JSON.parse(item.thumbnail_url).filter((url: string) => url) : []
+  );
   const [testOutput, setTestOutput] = useState<string[]>([]);
   const [testError, setTestError] = useState<string | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -100,46 +102,68 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file");
-      return;
+    const validFiles: File[] = [];
+    const previews: string[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      if (!file.type.startsWith("image/")) {
+        toast.error(`${file.name} is not an image file`);
+        continue;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} size must be less than 5MB`);
+        continue;
+      }
+
+      validFiles.push(file);
+      previews.push(URL.createObjectURL(file));
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image size must be less than 5MB");
-      return;
-    }
-
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+    setImageFiles(prev => [...prev, ...validFiles]);
+    setImagePreviews(prev => [...prev, ...previews]);
   };
 
-  const uploadImage = async (): Promise<string | null> => {
-    if (!imageFile) return formData.thumbnail_url;
+  const uploadImages = async (): Promise<string> => {
+    if (imageFiles.length === 0) return formData.thumbnail_url;
 
     setUploading(true);
+    const uploadedUrls: string[] = [];
+
     try {
-      const fileExt = imageFile.name.split(".").pop();
-      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${fileName}`;
+      for (const file of imageFiles) {
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `${fileName}`;
 
-      const { error: uploadError, data } = await supabase.storage
-        .from("thumbnails")
-        .upload(filePath, imageFile);
+        const { error: uploadError } = await supabase.storage
+          .from("thumbnails")
+          .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
+        if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from("thumbnails")
-        .getPublicUrl(filePath);
+        const { data: { publicUrl } } = supabase.storage
+          .from("thumbnails")
+          .getPublicUrl(filePath);
 
-      return publicUrl;
+        uploadedUrls.push(publicUrl);
+      }
+
+      // Combine with existing URLs from formData
+      const existingUrls = formData.thumbnail_url 
+        ? JSON.parse(formData.thumbnail_url).filter((url: string) => url)
+        : [];
+      const allUrls = [...existingUrls, ...uploadedUrls];
+      
+      return JSON.stringify(allUrls);
     } catch (error) {
-      toast.error("Failed to upload image");
-      return null;
+      toast.error("Failed to upload images");
+      return formData.thumbnail_url;
     } finally {
       setUploading(false);
     }
@@ -259,12 +283,12 @@ return true;`
     setLoading(true);
 
     try {
-      // Upload image if selected
-      const thumbnailUrl = await uploadImage();
+      // Upload images if selected
+      const thumbnailUrl = await uploadImages();
       
       const dataToSave = {
         ...formData,
-        thumbnail_url: thumbnailUrl || formData.thumbnail_url,
+        thumbnail_url: thumbnailUrl || formData.thumbnail_url || JSON.stringify([]),
         category_ids: selectedCategories,
       };
 
@@ -391,22 +415,34 @@ return true;`
         </div>
 
         <div className="space-y-2">
-          <Label>Thumbnail Image</Label>
+          <Label>Thumbnail Images (Multiple supported: jpg, png, jpeg, ico, svg, webp)</Label>
           <div className="space-y-3">
-            {imagePreview && (
-              <div className="relative w-32 h-32 border rounded-lg overflow-hidden">
-                <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setImageFile(null);
-                    setImagePreview("");
-                    setFormData({ ...formData, thumbnail_url: "" });
-                  }}
-                  className="absolute top-1 right-1 p-1 bg-background/80 rounded-full hover:bg-background"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+            {imagePreviews.length > 0 && (
+              <div className="grid grid-cols-4 gap-3">
+                {imagePreviews.map((preview, index) => (
+                  <div key={index} className="relative w-full aspect-square border rounded-lg overflow-hidden">
+                    <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImagePreviews(prev => prev.filter((_, i) => i !== index));
+                        setImageFiles(prev => prev.filter((_, i) => i !== index));
+                        
+                        // Update formData if this was from existing URLs
+                        try {
+                          const urls = JSON.parse(formData.thumbnail_url || '[]');
+                          const filteredUrls = urls.filter((_: string, i: number) => i !== index);
+                          setFormData({ ...formData, thumbnail_url: JSON.stringify(filteredUrls) });
+                        } catch (e) {
+                          // Ignore parse errors
+                        }
+                      }}
+                      className="absolute top-1 right-1 p-1 bg-background/80 rounded-full hover:bg-background"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
             
@@ -415,29 +451,37 @@ return true;`
                 <Label htmlFor="image-upload" className="cursor-pointer">
                   <div className="flex items-center gap-2 px-4 py-2 border rounded-md hover:bg-muted transition-colors">
                     <Upload className="h-4 w-4" />
-                    <span className="text-sm">Upload Image</span>
+                    <span className="text-sm">Upload Images (Multiple)</span>
                   </div>
                 </Label>
                 <Input
                   id="image-upload"
                   type="file"
-                  accept="image/*"
+                  accept="image/jpg,image/jpeg,image/png,image/ico,image/svg+xml,image/webp"
                   onChange={handleImageUpload}
                   className="hidden"
+                  multiple
                 />
               </div>
               
               <div className="flex-1">
-                <Label htmlFor="thumbnail_url" className="text-sm text-muted-foreground">Or paste URL</Label>
+                <Label htmlFor="thumbnail_url" className="text-sm text-muted-foreground">Or paste URLs (JSON array)</Label>
                 <Input
                   id="thumbnail_url"
-                  type="url"
+                  type="text"
                   value={formData.thumbnail_url}
                   onChange={(e) => {
                     setFormData({ ...formData, thumbnail_url: e.target.value });
-                    setImagePreview(e.target.value);
+                    try {
+                      const urls = JSON.parse(e.target.value);
+                      if (Array.isArray(urls)) {
+                        setImagePreviews(urls);
+                      }
+                    } catch (e) {
+                      // Ignore invalid JSON
+                    }
                   }}
-                  placeholder="https://example.com/image.jpg"
+                  placeholder='["https://example.com/image1.jpg"]'
                 />
               </div>
             </div>
