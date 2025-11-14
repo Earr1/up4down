@@ -22,7 +22,7 @@ const urlSchema = z.string().url("Must be a valid URL").max(500);
 const itemSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200),
   description: z.string().trim().max(2000).optional(),
-  category_id: z.string().uuid("Invalid category"),
+  category_ids: z.array(z.string().uuid()).min(1, "At least one category is required"),
   file_type: z.string().trim().min(1, "File type is required").max(50),
   file_size: z.string().trim().max(50).optional(),
   version: z.string().trim().max(50).optional(),
@@ -52,10 +52,10 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
   const [imagePreview, setImagePreview] = useState<string>(item?.thumbnail_url || "");
   const [testOutput, setTestOutput] = useState<string[]>([]);
   const [testError, setTestError] = useState<string | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     title: item?.title || "",
     description: item?.description || "",
-    category_id: item?.category_id || "",
     thumbnail_url: item?.thumbnail_url || "",
     download_url: item?.download_url || "",
     file_type: item?.file_type || "",
@@ -70,11 +70,33 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
 
   useEffect(() => {
     fetchCategories();
+    if (item) {
+      fetchItemCategories();
+    }
   }, []);
 
   const fetchCategories = async () => {
     const { data } = await supabase.from("categories").select("id, name").order("name");
     if (data) setCategories(data);
+  };
+
+  const fetchItemCategories = async () => {
+    if (!item?.id) return;
+    const { data } = await supabase
+      .from("download_item_categories")
+      .select("category_id")
+      .eq("item_id", item.id);
+    if (data) {
+      setSelectedCategories(data.map(ic => ic.category_id));
+    }
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,13 +147,13 @@ export const AdminItemForm = ({ item, onSuccess, onCancel }: AdminItemFormProps)
 
   const jsTemplates = {
     adMonetization: `// Ad Monetization - Requires 3 clicks before download
-// Replace 'https://example.com' with your ad network URL
+// Replace the URL below with your actual ad network URL
 
 let clickCount = parseInt(sessionStorage.getItem('download_clicks_' + item.id) || '0');
 
 if (clickCount < 3) {
   // Open ad URL in new tab
-  window.open('https://example.com', '_blank');
+  window.open('https://www.effectivegatecpm.com/cuuerxmk8?key=778d89c91abfbc774376c60a4bb4ac59', '_blank');
   
   // Increment click count
   clickCount++;
@@ -243,6 +265,7 @@ return true;`
       const dataToSave = {
         ...formData,
         thumbnail_url: thumbnailUrl || formData.thumbnail_url,
+        category_ids: selectedCategories,
       };
 
       // Validate form data
@@ -255,18 +278,51 @@ return true;`
 
       if (item) {
         // Update existing item
+        const { category_ids, ...itemData } = dataToSave;
         const { error } = await supabase
           .from("download_items")
-          .update(dataToSave)
+          .update(itemData)
           .eq("id", item.id);
 
         if (error) throw error;
+
+        // Update categories
+        await supabase
+          .from("download_item_categories")
+          .delete()
+          .eq("item_id", item.id);
+
+        const categoryInserts = selectedCategories.map(cat_id => ({
+          item_id: item.id,
+          category_id: cat_id,
+        }));
+
+        await supabase
+          .from("download_item_categories")
+          .insert(categoryInserts);
+
         toast.success("Item updated successfully");
       } else {
         // Create new item
-        const { error } = await supabase.from("download_items").insert([dataToSave]);
+        const { category_ids, ...itemData } = dataToSave;
+        const { data: newItem, error } = await supabase
+          .from("download_items")
+          .insert([itemData])
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // Insert categories
+        const categoryInserts = selectedCategories.map(cat_id => ({
+          item_id: newItem.id,
+          category_id: cat_id,
+        }));
+
+        await supabase
+          .from("download_item_categories")
+          .insert(categoryInserts);
+
         toast.success("Item created successfully");
       }
 
@@ -303,37 +359,35 @@ return true;`
           />
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="category">Category *</Label>
-            <Select
-              value={formData.category_id}
-              onValueChange={(value) => setFormData({ ...formData, category_id: value })}
-              required
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="space-y-2">
+          <Label className="text-base font-semibold">Categories * (Select at least one)</Label>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 border rounded-lg">
+            {categories.map((cat) => (
+              <div key={cat.id} className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id={`cat-${cat.id}`}
+                  checked={selectedCategories.includes(cat.id)}
+                  onChange={() => toggleCategory(cat.id)}
+                  className="w-4 h-4 rounded border-gray-300"
+                />
+                <Label htmlFor={`cat-${cat.id}`} className="font-normal cursor-pointer">
+                  {cat.name}
+                </Label>
+              </div>
+            ))}
           </div>
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="file_type">File Type *</Label>
-            <Input
-              id="file_type"
-              value={formData.file_type}
-              onChange={(e) => setFormData({ ...formData, file_type: e.target.value })}
-              placeholder="e.g., apk, exe, pdf"
-              required
-            />
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="file_type">File Type *</Label>
+          <Input
+            id="file_type"
+            value={formData.file_type}
+            onChange={(e) => setFormData({ ...formData, file_type: e.target.value })}
+            placeholder="e.g., apk, exe, pdf"
+            required
+          />
         </div>
 
         <div className="space-y-2">

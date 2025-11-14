@@ -38,10 +38,45 @@ export type Database = {
         }
         Relationships: []
       }
+      download_item_categories: {
+        Row: {
+          category_id: string
+          created_at: string
+          id: string
+          item_id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          id?: string
+          item_id: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "download_item_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "download_item_categories_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "download_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       download_items: {
         Row: {
           average_rating: number | null
-          category_id: string | null
           created_at: string
           custom_js: string | null
           description: string | null
@@ -59,7 +94,6 @@ export type Database = {
         }
         Insert: {
           average_rating?: number | null
-          category_id?: string | null
           created_at?: string
           custom_js?: string | null
           description?: string | null
@@ -77,7 +111,6 @@ export type Database = {
         }
         Update: {
           average_rating?: number | null
-          category_id?: string | null
           created_at?: string
           custom_js?: string | null
           description?: string | null
@@ -93,15 +126,7 @@ export type Database = {
           updated_at?: string
           version?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "download_items_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       ratings: {
         Row: {

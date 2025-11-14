@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import * as Icons from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
@@ -12,38 +13,51 @@ interface Category {
 
 interface CategoryFilterProps {
   categories: Category[];
-  selectedCategory: string | null;
-  onSelectCategory: (slug: string | null) => void;
+  selectedCategories: string[];
+  onSelectCategories: (slugs: string[]) => void;
 }
 
 export const CategoryFilter = ({
   categories,
-  selectedCategory,
-  onSelectCategory,
+  selectedCategories,
+  onSelectCategories,
 }: CategoryFilterProps) => {
   const getIcon = (iconName: string): LucideIcon => {
     return (Icons[iconName as keyof typeof Icons] as LucideIcon) || Icons.Folder;
   };
 
+  const toggleCategory = (slug: string) => {
+    if (selectedCategories.includes(slug)) {
+      onSelectCategories(selectedCategories.filter(s => s !== slug));
+    } else {
+      onSelectCategories([...selectedCategories, slug]);
+    }
+  };
+
+  const clearAll = () => {
+    onSelectCategories([]);
+  };
+
   return (
     <div className="mb-8">
-      <h2 className="text-lg font-semibold mb-4">Categories</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">Categories</h2>
+        {selectedCategories.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={clearAll}>
+            Clear All
+          </Button>
+        )}
+      </div>
       <div className="flex flex-wrap gap-2">
-        <Button
-          variant={selectedCategory === null ? "default" : "outline"}
-          onClick={() => onSelectCategory(null)}
-          className={selectedCategory === null ? "bg-accent hover:bg-accent/90" : ""}
-        >
-          All
-        </Button>
         {categories.map((category) => {
           const IconComponent = getIcon(category.icon);
+          const isSelected = selectedCategories.includes(category.slug);
           return (
             <Button
               key={category.id}
-              variant={selectedCategory === category.slug ? "default" : "outline"}
-              onClick={() => onSelectCategory(category.slug)}
-              className={selectedCategory === category.slug ? "bg-accent hover:bg-accent/90" : ""}
+              variant={isSelected ? "default" : "outline"}
+              onClick={() => toggleCategory(category.slug)}
+              className={isSelected ? "bg-accent hover:bg-accent/90" : ""}
             >
               <IconComponent className="mr-2 h-4 w-4" />
               {category.name}

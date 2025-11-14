@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { RatingInput } from "@/components/RatingInput";
+import { RelatedItems } from "@/components/RelatedItems";
 import { Download as DownloadIcon, Eye, Star, Clock, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
@@ -23,8 +24,8 @@ interface DownloadItem {
   average_rating: number;
   rating_count: number;
   created_at: string;
-  category_id: string;
   custom_js?: string | null;
+  categories?: { category_id: string }[];
 }
 
 interface Category {
@@ -46,20 +47,23 @@ const Download = () => {
 
     const { data: itemData } = await supabase
       .from("download_items")
-      .select("*")
+      .select("*, download_item_categories(category_id)")
       .eq("id", id)
       .single();
 
     if (itemData) {
       setItem(itemData);
 
-      const { data: categoryData } = await supabase
-        .from("categories")
-        .select("name")
-        .eq("id", itemData.category_id)
-        .single();
+      // Fetch first category name if available
+      if (itemData.download_item_categories && itemData.download_item_categories.length > 0) {
+        const { data: categoryData } = await supabase
+          .from("categories")
+          .select("name")
+          .eq("id", itemData.download_item_categories[0].category_id)
+          .single();
 
-      if (categoryData) setCategory(categoryData);
+        if (categoryData) setCategory(categoryData);
+      }
     }
     setLoading(false);
   };
@@ -212,6 +216,13 @@ const Download = () => {
             </Card>
           </div>
         </div>
+
+        {item.categories && item.categories.length > 0 && (
+          <RelatedItems 
+            currentItemId={item.id} 
+            categoryIds={item.categories.map(ic => ic.category_id)} 
+          />
+        )}
       </main>
     </div>
   );

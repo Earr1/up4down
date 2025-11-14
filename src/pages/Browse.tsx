@@ -22,7 +22,7 @@ interface DownloadItem {
   download_count: number;
   average_rating: number;
   rating_count: number;
-  category_id: string;
+  categories?: { category_id: string }[];
 }
 
 const Browse = () => {
@@ -32,7 +32,9 @@ const Browse = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<DownloadItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(categoryParam);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    categoryParam ? [categoryParam] : []
+  );
 
   useEffect(() => {
     fetchCategories();
@@ -40,7 +42,7 @@ const Browse = () => {
 
   useEffect(() => {
     fetchItems();
-  }, [selectedCategory]);
+  }, [selectedCategories]);
 
   const fetchCategories = async () => {
     const { data } = await supabase
@@ -52,20 +54,40 @@ const Browse = () => {
 
   const fetchItems = async () => {
     setLoading(true);
-    let query = supabase
-      .from("download_items")
-      .select("*")
-      .order("created_at", { ascending: false });
+    
+    if (selectedCategories.length > 0) {
+      // Get category IDs from slugs
+      const selectedCats = categories.filter(c => selectedCategories.includes(c.slug));
+      const categoryIds = selectedCats.map(c => c.id);
 
-    if (selectedCategory) {
-      const category = categories.find(c => c.slug === selectedCategory);
-      if (category) {
-        query = query.eq("category_id", category.id);
+      if (categoryIds.length > 0) {
+        // Get items with any of these categories from junction table
+        const { data: itemCategories } = await supabase
+          .from("download_item_categories")
+          .select("item_id")
+          .in("category_id", categoryIds);
+
+        if (itemCategories) {
+          const itemIds = [...new Set(itemCategories.map(ic => ic.item_id))];
+          const { data } = await supabase
+            .from("download_items")
+            .select("*, download_item_categories!inner(category_id)")
+            .in("id", itemIds)
+            .order("created_at", { ascending: false });
+
+          if (data) setItems(data);
+        }
       }
-    }
+    } else {
+      // Get all items
+      const { data } = await supabase
+        .from("download_items")
+        .select("*, download_item_categories(category_id)")
+        .order("created_at", { ascending: false });
 
-    const { data } = await query;
-    if (data) setItems(data);
+      if (data) setItems(data);
+    }
+    
     setLoading(false);
   };
 
@@ -81,8 +103,8 @@ const Browse = () => {
 
         <CategoryFilter
           categories={categories}
-          selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
+          selectedCategories={selectedCategories}
+          onSelectCategories={setSelectedCategories}
         />
 
         {loading ? (
