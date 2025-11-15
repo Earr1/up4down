@@ -465,23 +465,27 @@ return true;`
               </div>
               
               <div className="flex-1">
-                <Label htmlFor="thumbnail_url" className="text-sm text-muted-foreground">Or paste URLs (JSON array)</Label>
-                <Input
+                <Label htmlFor="thumbnail_url" className="text-sm text-muted-foreground">Or paste URLs (one per line)</Label>
+                <Textarea
                   id="thumbnail_url"
-                  type="text"
-                  value={formData.thumbnail_url}
-                  onChange={(e) => {
-                    setFormData({ ...formData, thumbnail_url: e.target.value });
+                  value={(() => {
                     try {
-                      const urls = JSON.parse(e.target.value);
-                      if (Array.isArray(urls)) {
-                        setImagePreviews(urls);
-                      }
-                    } catch (e) {
-                      // Ignore invalid JSON
+                      const urls = JSON.parse(formData.thumbnail_url || '[]');
+                      return Array.isArray(urls) ? urls.join('\n') : formData.thumbnail_url;
+                    } catch {
+                      return formData.thumbnail_url;
                     }
+                  })()}
+                  onChange={(e) => {
+                    const inputValue = e.target.value;
+                    const urls = inputValue.split('\n').map(url => url.trim()).filter(url => url);
+                    const jsonUrls = JSON.stringify(urls);
+                    setFormData({ ...formData, thumbnail_url: jsonUrls });
+                    setImagePreviews(urls);
                   }}
-                  placeholder='["https://example.com/image1.jpg"]'
+                  placeholder="https://example.com/image1.jpg&#x0a;https://example.com/image2.jpg"
+                  rows={3}
+                  className="resize-none"
                 />
               </div>
             </div>

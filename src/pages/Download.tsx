@@ -10,13 +10,7 @@ import { RatingInput } from "@/components/RatingInput";
 import { RelatedItems } from "@/components/RelatedItems";
 import { Download as DownloadIcon, Eye, Star, Clock, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
+import { ImageCarousel } from "@/components/ImageCarousel";
 
 interface DownloadItem {
   id: string;
@@ -145,25 +139,7 @@ const Download = () => {
                   const thumbnailUrls = Array.isArray(urls) ? urls : [item.thumbnail_url];
                   
                   if (thumbnailUrls.length > 1) {
-                    return (
-                      <Carousel className="w-full mb-6">
-                        <CarouselContent>
-                          {thumbnailUrls.map((url, index) => (
-                            <CarouselItem key={index}>
-                              <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
-                                <img
-                                  src={url}
-                                  alt={`${item.title} - Image ${index + 1}`}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            </CarouselItem>
-                          ))}
-                        </CarouselContent>
-                        <CarouselPrevious className="left-4" />
-                        <CarouselNext className="right-4" />
-                      </Carousel>
-                    );
+                    return <ImageCarousel images={thumbnailUrls} title={item.title} />;
                   }
                   
                   return (
