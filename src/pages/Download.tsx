@@ -10,6 +10,13 @@ import { RatingInput } from "@/components/RatingInput";
 import { RelatedItems } from "@/components/RelatedItems";
 import { Download as DownloadIcon, Eye, Star, Clock, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 interface DownloadItem {
   id: string;
@@ -132,20 +139,50 @@ const Download = () => {
         <div className="grid md:grid-cols-3 gap-8">
           <div className="md:col-span-2 space-y-6">
             <Card className="p-6">
-              {item.thumbnail_url && (
-                <img
-                  src={(() => {
-                    try {
-                      const urls = JSON.parse(item.thumbnail_url);
-                      return Array.isArray(urls) && urls.length > 0 ? urls[0] : item.thumbnail_url;
-                    } catch {
-                      return item.thumbnail_url;
-                    }
-                  })()}
-                  alt={item.title}
-                  className="w-full h-64 object-cover rounded-lg mb-6"
-                />
-              )}
+              {item.thumbnail_url && (() => {
+                try {
+                  const urls = JSON.parse(item.thumbnail_url);
+                  const thumbnailUrls = Array.isArray(urls) ? urls : [item.thumbnail_url];
+                  
+                  if (thumbnailUrls.length > 1) {
+                    return (
+                      <Carousel className="w-full mb-6">
+                        <CarouselContent>
+                          {thumbnailUrls.map((url, index) => (
+                            <CarouselItem key={index}>
+                              <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
+                                <img
+                                  src={url}
+                                  alt={`${item.title} - Image ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            </CarouselItem>
+                          ))}
+                        </CarouselContent>
+                        <CarouselPrevious className="left-4" />
+                        <CarouselNext className="right-4" />
+                      </Carousel>
+                    );
+                  }
+                  
+                  return (
+                    <img
+                      src={thumbnailUrls[0]}
+                      alt={item.title}
+                      className="w-full h-64 object-cover rounded-lg mb-6"
+                    />
+                  );
+                } catch {
+                  return (
+                    <img
+                      src={item.thumbnail_url}
+                      alt={item.title}
+                      className="w-full h-64 object-cover rounded-lg mb-6"
+                    />
+                  );
+                }
+              })()}
 
               <div className="space-y-4">
                 <div>
