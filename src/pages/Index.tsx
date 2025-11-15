@@ -47,8 +47,7 @@ const Index = () => {
             </h1>
 
             <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              Access thousands of apps, software, games, videos, and more. All in one place,
-              safe and secure.
+              Access thousands of apps, software, games, videos, and more. All in one place, free for lifetime.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
