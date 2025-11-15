@@ -33,7 +33,12 @@ export const AdminItemList = ({ onEdit }: AdminItemListProps) => {
     setLoading(true);
     const { data } = await supabase
       .from("download_items")
-      .select("*, categories(name)")
+      .select(`
+        *,
+        download_item_categories(
+          categories(name, slug)
+        )
+      `)
       .order("created_at", { ascending: false });
 
     if (data) setItems(data);
@@ -75,15 +80,19 @@ export const AdminItemList = ({ onEdit }: AdminItemListProps) => {
                 />
               )}
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-lg truncate">{item.title}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="secondary">{item.categories?.name}</Badge>
-                      <Badge variant="outline">{item.file_type.toUpperCase()}</Badge>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg truncate">{item.title}</h3>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {item.download_item_categories?.map((dic: any) => (
+                          <Badge key={dic.categories.slug} variant="secondary">
+                            {dic.categories.name}
+                          </Badge>
+                        ))}
+                        <Badge variant="outline">{item.file_type.toUpperCase()}</Badge>
+                      </div>
                     </div>
-                  </div>
 
                   <div className="flex gap-2 shrink-0">
                     <Button
